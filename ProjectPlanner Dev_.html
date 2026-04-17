@@ -1,0 +1,1983 @@
+<!-- Version | Revision Date | Initials -->
+<!---->
+<!-- Version 01.00 | 03-02-2026 | RED: Initial Version 01.00 -->
+<!-- Version 01.01 | 13-02-2026 | RED: calculate(): Updated handling of Backwards Scheduling and manual dates-->
+<!---->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Project Planner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='0.9em' font-size='90'>🌸</text>
+  </svg>"
+    />
+
+    <style>
+      /* ============================================================
+   GLOBAL VARIABLES — ADO Light + ADO Dark
+  ============================================================ */
+
+      /* ----- LIGHT MODE (ADO Boards-style Light verified through Fluent tokens) ----- */
+      :root {
+        --bg: #f6f7f8; /* Verified Fluent neutral background */
+        --card-bg: #ffffff;
+        --text: #242424;
+        --muted: #616161;
+        --border: #e1dfdd;
+
+        --primary: #0078d4; /* Verified Fluent / Azure DevOps brand blue */
+        --primary-hover: #106ebe;
+        --primary-pressed: #005a9e;
+
+        --danger: #a4262c;
+        --radius: 4px; /* ADO-sharp corners */
+        --radius-sm: 4px;
+        --shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+      }
+
+      /* ============================================================
+   BASE PAGE LAYOUT (LIGHT)
+   ============================================================ */
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          Arial,
+          sans-serif;
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      h1 {
+        margin-bottom: 18px;
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      h2 {
+        margin-top: 32px;
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      /* ============================================================
+   CARD-LIKE FIELDS (LIGHT)
+   ============================================================ */
+      fieldset {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow);
+      }
+
+      legend b {
+        padding: 6px 12px;
+        background: var(--primary);
+        border-radius: var(--radius-sm);
+        color: white;
+        font-weight: 600;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        margin-top: 10px;
+        margin-bottom: 4px;
+        color: var(--muted);
+      }
+
+      input[type='text'],
+      input[type='number'],
+      select {
+        width: 260px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        font-size: 14px;
+        outline: none;
+        transition: 0.15s;
+      }
+      input:focus,
+      select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
+      }
+
+      /* ============================================================
+  ADO LIGHT + DARK DROPZONE
+============================================================ */
+      .dropzone {
+        border: 2px dashed var(--primary);
+        border-radius: var(--radius);
+        padding: 22px;
+        margin: 10px 0 25px 0;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary);
+        background: #eaf3fc;
+        cursor: pointer;
+        transition:
+          background 0.25s,
+          border-color 0.25s;
+      }
+      .dropzone.dragover {
+        background: #d8ecff;
+        border-color: var(--primary-hover);
+      }
+
+      /* ===================== DROPZONE DARK MODE ===================== */ /* HOLD RED: Kan fjernes?*/
+      body.dark .dropzone {
+        border-color: #60a5fa;
+        color: #93c5fd;
+        background: #1e293b;
+      }
+
+      body.dark .dropzone.dragover {
+        background: #334155;
+        border-color: #93c5fd;
+      }
+
+      /* ============================================================
+   SETTINGS GRID
+============================================================ */
+      .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 16px;
+        row-gap: 8px;
+        align-items: end;
+      }
+      .settings-grid .field {
+        display: block;
+      }
+      .settings-card .field input,
+      .settings-card .field select {
+        width: 180px !important;
+      }
+      .settings-grid .field--full {
+        grid-column: 1 / -1;
+      }
+
+      /* Responsive for light mode */
+      @media (max-width: 820px) {
+        .settings-grid {
+          grid-template-columns: 1fr;
+        }
+        .settings-card .field input,
+        .settings-card .field select {
+          width: 100% !important;
+        }
+      }
+
+      /* ============================================================
+  BUTTONS — ADO LIGHT + SHADOWS
+============================================================ */
+      button {
+        padding: 10px 14px;
+        font-size: 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: 0.15s;
+        background: #ffffff;
+        color: var(--text);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        font-weight: 600;
+      }
+
+      button:hover {
+        background: #f3f2f1;
+      }
+
+      /* Primary action buttons */
+      #calculate,
+      #exportCsv,
+      #copyHtml,
+      #copyGantt,
+      #importCsv {
+        background: var(--primary);
+        color: #ffffff;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      }
+
+      #calculate:hover,
+      #exportCsv:hover,
+      #copyHtml:hover,
+      #copyGantt:hover,
+      #importCsv:hover {
+        background: var(--primary-hover);
+      }
+
+      #clearAll {
+        background: var(--danger);
+        color: white;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      }
+
+      #clearAll:hover {
+        background: #8e1d22;
+      }
+
+      .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 14px 0;
+      }
+
+      /* ============================================================
+  TABLE (LIGHT)
+============================================================ */
+      table {
+        width: 100%;
+        border-collapse: separate;
+        background: var(--card-bg);
+        border-spacing: 0;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      th {
+        background: #f3f2f1;
+        padding: 10px 8px;
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+      }
+
+      td {
+        padding: 8px 6px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+
+      tbody tr:nth-child(odd) {
+        background: #fafafa;
+      }
+      tr.dragging {
+        opacity: 0.4;
+      }
+      tr.dragover {
+        outline: 2px dashed var(--primary);
+      }
+
+      /* ============================================================
+  GANTT LIGHT
+============================================================ */
+      #ganttContainer {
+        margin-top: 24px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        overflow-x: auto;
+        box-shadow: var(--shadow);
+      }
+
+      #ganttChart {
+        position: relative;
+        width: max-content;
+      }
+
+      .gantt-row {
+        display: flex;
+        height: 26px;
+        align-items: center;
+        margin: 6px 0;
+      }
+
+      .gantt-bar {
+        position: absolute;
+        height: 20px;
+        border-radius: 4px;
+        color: white;
+        font-size: 11px;
+        line-height: 20px;
+        text-align: center;
+        padding: 0 4px;
+        font-weight: 600;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .tooltip {
+        position: fixed;
+        background: rgba(17, 24, 39, 0.95);
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 99999;
+        display: none;
+        pointer-events: none;
+        white-space: nowrap;
+        transform: translateY(-6px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+
+      /* ============================================================
+  ADO DARK MODE
+============================================================ */
+
+      body.dark {
+        --bg: #201f1e;
+        --card-bg: #252423;
+        --text: rgba(255, 255, 255, 0.95);
+        --muted: rgba(255, 255, 255, 0.8);
+        --border: rgba(255, 255, 255, 0.1);
+
+        --primary: #0078d4;
+        --primary-hover: #106ebe;
+        --primary-pressed: #005a9e;
+
+        --danger: #a4262c;
+      }
+
+      body.dark {
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body.dark fieldset {
+        background: var(--card-bg);
+        border-color: var(--border);
+      }
+
+      body.dark legend b {
+        background: var(--card-bg);
+      }
+
+      body.dark label {
+        color: var(--muted);
+      }
+
+      /* Inputs */
+      body.dark input,
+      body.dark select {
+        background: #2b2a29;
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+      body.dark input:focus,
+      body.dark select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.35);
+      }
+
+      /* Dropzone */
+      body.dark .dropzone {
+        border-color: #60a5fa;
+        color: #93c5fd;
+        background: #1e293b;
+      }
+      body.dark .dropzone.dragover {
+        background: #334155;
+        border-color: #93c5fd;
+      }
+
+      /* Buttons (Dark) */
+      body.dark button {
+        background: #2b2a29;
+        border-color: rgba(255, 255, 255, 0.16);
+        color: var(--text);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+        border-radius: 4px;
+      }
+      body.dark button:hover {
+        background: #343332;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.55);
+      }
+      body.dark button:active {
+        background: #3b3a39;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      }
+
+      /* Primary Buttons (Dark) */
+      body.dark #calculate,
+      body.dark #exportCsv,
+      body.dark #copyGantt,
+      body.dark #copyHtml,
+      body.dark #importCsv {
+        background: var(--primary);
+        border-color: #005a9e;
+        color: #ffffff;
+        box-shadow:
+          0 2px 6px rgba(0, 0, 0, 0.55),
+          0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+      body.dark #calculate:hover,
+      body.dark #exportCsv:hover,
+      body.dark #copyGantt:hover,
+      body.dark #copyHtml:hover,
+      body.dark #importCsv:hover {
+        background: var(--primary-hover);
+        box-shadow:
+          0 3px 10px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      body.dark #calculate:active,
+      body.dark #exportCsv:active,
+      body.dark #copyHtml:active,
+      body.dark #copyGantt:active,
+      body.dark #importCsv:active {
+        background: var(--primary-pressed);
+      }
+
+      /* Destructive */
+      body.dark #clearAll {
+        background: #a4262c;
+        border-color: #8e1d22;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+      }
+      body.dark #clearAll:hover {
+        background: #8e1d22;
+      }
+      body.dark #clearAll:active {
+        background: #601410;
+      }
+
+      /* Table (Dark) */
+      body.dark table {
+        background: #252423;
+        border-color: var(--border);
+      }
+      body.dark th {
+        background: #2f2e2d;
+        border-color: var(--border);
+        color: var(--muted);
+      }
+      body.dark td {
+        background: #252423;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Gantt Dark */
+      body.dark #ganttContainer {
+        background: #252423;
+        border-color: var(--border);
+      }
+      body.dark .gantt-label {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      body.dark .tooltip {
+        background: rgba(32, 31, 30, 0.95);
+      }
+
+      /* Layout: Settings + Filter side-by-side */
+      .settings-row {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .settings-card {
+        flex: 1 1 380px;
+      }
+      .filter-card {
+        flex: 0 0 280px;
+      }
+
+      /* Actions card spacing */
+      .card-actions {
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>
+      🌸 Project Planner
+      <button id="toggleTheme" style="float: right; margin-bottom: 10px">🌗 Dark Mode</button>
+    </h1>
+
+    <!-- SETTINGS + FILTER (side-by-side) -->
+    <div class="settings-row">
+      <!-- SETTINGS -->
+      <fieldset class="settings-card">
+        <legend><b>Settings</b></legend>
+
+        <div class="settings-grid">
+          <!-- Row 1: Scheduling Mode (full width) -->
+          <div class="field field--full">
+            <label>Scheduling Mode:</label>
+            <select id="scheduleMode">
+              <option value="start" selected>From Start Date</option>
+              <option value="finish">From Target Date</option>
+            </select>
+          </div>
+
+          <!-- Row 2: Project Start | Hours per Workday -->
+          <div class="field">
+            <label>Start Date (dd-mm-yyyy):</label>
+            <input id="projectStart" type="text" />
+          </div>
+          <div class="field">
+            <label>Hours per Workday:</label>
+            <input id="hoursPerDay" type="number" value="6" min="1" />
+          </div>
+
+          <!-- Row 3: Target Finish | Project Name -->
+          <div class="field">
+            <label>Target Date (dd-mm-yyyy):</label>
+            <input id="targetFinish" type="text" placeholder="dd-mm-yyyy" />
+          </div>
+          <div class="field">
+            <label>Project Name:</label>
+            <input id="projectName" type="text" placeholder="Enter project name" />
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- PRODUCT CODE FILTER -->
+      <fieldset class="filter-card">
+        <legend><b>Product Code Filter</b></legend>
+        <label>Show only Product Code:</label>
+        <select id="filterProduct">
+          <option value="">(All)</option>
+        </select>
+      </fieldset>
+    </div>
+
+    <!-- DROP ZONE -->
+    <div id="csvDropZone" class="dropzone">📄 Drop CSV file here (or click to choose file)</div>
+
+    <!-- TASKS -->
+    <fieldset>
+      <legend><b>Tasks</b></legend>
+
+      <div class="btn-row">
+        <button id="addRow">Add - Empty Task</button>
+        <button id="addProgram">Add - Program Implementation</button>
+        <button id="addDocumentation">Add - Documentation</button>
+        <button id="removeSelected">Remove Selected</button>
+        <button id="loadSample">Load Sample</button>
+      </div>
+
+      <table id="taskTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>ID</th>
+            <th>Predecessor</th>
+            <th>Activity Code</th>
+            <th>Task Name</th>
+            <th>Duration (h)</th>
+            <th>Product Code</th>
+            <th>CCN</th>
+            <th>Manual Start</th>
+            <th>Calculated Start</th>
+            <th>Calculated Finish</th>
+            <th>Responsible</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </fieldset>
+
+    <!-- ACTIONS -->
+    <fieldset class="card-actions">
+      <legend><b>Actions</b></legend>
+      <div class="btn-row">
+        <button id="calculate">Calculate Schedule</button>
+        <button id="exportCsv">Export CSV</button>
+        <button id="copyHtml">Copy Plan</button>
+        <button id="copyGantt">Copy Gantt</button>
+        <button id="importCsv">Import CSV</button>
+        <input id="csvFileInput" type="file" accept=".csv,text/csv" style="display: none" />
+        <button id="clearAll">Reset All</button>
+      </div>
+    </fieldset>
+
+    <!-- GANTT -->
+    <h2>Gantt Chart</h2>
+    <h6>Grey = Weekend - Red = Holiday</h6>
+    <div id="ganttContainer">
+      <div id="ganttChart"></div>
+      <div id="tooltip" class="tooltip"></div>
+    </div>
+
+    <!----------------------------------------------------------------------------------------------------------------------------------------------->
+
+    <script>
+      // Keep the latest Gantt rendering context to reuse for copy/export
+      let _lastGanttState = {
+        tasks: [],
+        min: null,
+        max: null,
+        pxPerDay: 24,
+        colorByProduct: {}
+      };
+
+      // ----------------- Renumber ID ------------------------//
+      function renumberIds() {
+        const rows = document.querySelectorAll('#taskTable tbody tr');
+        let counter = 1;
+
+        rows.forEach((tr) => {
+          const idCell = tr.querySelector('td:nth-child(2) input');
+          if (idCell) {
+            idCell.value = counter++;
+          }
+        });
+      }
+
+      // =============== DRAG & DROP ROW REORDER ===============
+      let dragSrcRow = null;
+
+      function handleDragStart(e) {
+        dragSrcRow = this;
+        this.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      }
+      function handleDragOver(e) {
+        e.preventDefault();
+        this.classList.add('dragover');
+        e.dataTransfer.dropEffect = 'move';
+      }
+      function handleDragLeave() {
+        this.classList.remove('dragover');
+      }
+      function handleDrop(e) {
+        e.stopPropagation();
+        this.classList.remove('dragover');
+        if (dragSrcRow !== this) {
+          const tbody = this.parentNode;
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          const srcIndex = rows.indexOf(dragSrcRow);
+          const dstIndex = rows.indexOf(this);
+          if (srcIndex < dstIndex) {
+            tbody.insertBefore(dragSrcRow, this.nextSibling);
+          } else {
+            tbody.insertBefore(dragSrcRow, this);
+          }
+          renumberIds();
+        }
+      }
+      function handleDragEnd() {
+        this.classList.remove('dragging');
+      }
+      function enableRowDragging(tr) {
+        tr.addEventListener('dragstart', handleDragStart, false);
+        tr.addEventListener('dragover', handleDragOver, false);
+        tr.addEventListener('dragleave', handleDragLeave, false);
+        tr.addEventListener('drop', handleDrop, false);
+        tr.addEventListener('dragend', handleDragEnd, false);
+      }
+
+      /* ============================ PREDEFINED HOLIDAYS (dd-mm-yyyy) ============================ */
+      const PREDEFINED_HOLIDAYS = [
+        '01-01-2026', // Første nyttårsdag
+        '02-04-2026', // Skjærtorsdag
+        '03-04-2026', // Langfredag
+        '05-04-2026', // Første påskedag
+        '06-04-2026', // Andre påskedag
+        '01-05-2026', // Arbeidernes dag
+        '14-05-2026', // Kristi himmelfartsdag
+        '17-05-2026', // Grunnlovsdagen
+        '24-05-2026', // Første pinsedag
+        '25-05-2026', // Andre pinsedag
+        // Sommerferie (expanded)
+        '01-07-2026',
+        '02-07-2026',
+        '03-07-2026',
+        '04-07-2026',
+        '05-07-2026',
+        '06-07-2026',
+        '07-07-2026',
+        '08-07-2026',
+        '09-07-2026',
+        '10-07-2026',
+        '11-07-2026',
+        '12-07-2026',
+        '13-07-2026',
+        '14-07-2026',
+        '15-07-2026',
+        '16-07-2026',
+        '17-07-2026',
+        '18-07-2026',
+        '19-07-2026',
+        '20-07-2026',
+        '21-07-2026',
+        '22-07-2026',
+        '23-07-2026',
+        '24-07-2026',
+        '25-07-2026',
+        '26-07-2026',
+        '27-07-2026',
+        '28-07-2026',
+        '29-07-2026',
+        '30-07-2026',
+
+        '25-12-2026', // Første juledag
+        '26-12-2026' // Andre juledag
+      ];
+
+      /* ================================== DATE HELPERS (dd-mm-yyyy) ================================== */
+      function parseDate(s) {
+        if (!s) return null;
+        const [dd, mm, yyyy] = s.split('-').map((x) => parseInt(x, 10));
+        if (!dd || !mm || !yyyy) return null;
+        return new Date(yyyy, mm - 1, dd);
+      }
+      function fmtDate(d) {
+        if (!d) return '';
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+      }
+      function addDays(d, n) {
+        const r = new Date(d);
+        r.setDate(r.getDate() + n);
+        return r;
+      }
+      function sameYMD(a, b) {
+        return (
+          a.getFullYear() === b.getFullYear() &&
+          a.getMonth() === b.getMonth() &&
+          a.getDate() === b.getDate()
+        );
+      }
+      const ceilDiv = (a, b) => (b <= 0 ? 0 : Math.floor((a + b - 1) / b));
+
+      /* =============================== WORKING DAY CALENDAR =============================== */
+      function weekendMask(pattern) {
+        return [...(pattern && pattern.length === 7 ? pattern : '0000011')].map((ch) => ch === '1');
+      }
+      function isWeekend(d, mask) {
+        // JS: 0=Sun..6=Sat; pattern Mon..Sun -> index map Sun->6, Mon->0
+        const dow = d.getDay();
+        const idx = dow === 0 ? 6 : dow - 1;
+        return mask[idx];
+      }
+      function isHoliday(d, hols) {
+        return hols.some((h) => sameYMD(h, d));
+      }
+      function isWorkday(d, mask, hols) {
+        return !isWeekend(d, mask) && !isHoliday(d, hols);
+      }
+      function nextWorkday(d, mask, hols) {
+        let x = addDays(d, 1);
+        while (!isWorkday(x, mask, hols)) x = addDays(x, 1);
+        return x;
+      }
+      function addWorkdays(start, days, mask, hols) {
+        let x = new Date(start),
+          added = 0;
+        while (added < days) {
+          x = addDays(x, 1);
+          if (isWorkday(x, mask, hols)) added++;
+        }
+        return x;
+      }
+
+      /* ============ NEW HELPERS FOR REVERSE (TARGET FINISH) SCHEDULING ============ */
+      function prevWorkday(d, mask, hols) {
+        let x = addDays(d, -1);
+        while (!isWorkday(x, mask, hols)) x = addDays(x, -1);
+        return x;
+      }
+      function subtractWorkdays(end, days, mask, hols) {
+        let x = new Date(end),
+          removed = 0;
+        while (removed < days) {
+          x = addDays(x, -1);
+          if (isWorkday(x, mask, hols)) removed++;
+        }
+        return x;
+      }
+      function ensureWorkdayOrPrev(d, mask, hols) {
+        // If d is a non-workday, move to the previous workday
+        return isWorkday(d, mask, hols) ? d : prevWorkday(d, mask, hols);
+      }
+
+      /* ================================== TABLE HANDLERS ================================== */
+      function addEmptyRow() {
+        const tr = document.createElement('tr');
+        tr.setAttribute('draggable', 'true');
+        tr.innerHTML = `
+    <td><input type="checkbox"></td>
+    <td><input type="number" style="width:70px"></td>
+    <td><input type="text" style="width:110px" placeholder="1,3"></td>
+    <td><input type="text" style="width:90px" placeholder="1810"></td>
+    <td><input type="text" style="width:160px"></td>
+    <td><input type="number" style="width:90px"></td>
+    <td><input type="text" style="width:120px" placeholder="IZ00"></td>
+    <td><input type="text" style="width:100px" placeholder="CCN"></td>
+    <td><input type="text" style="width:120px" placeholder="dd-mm-yyyy"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+    <td><input type="text" style="width:140px" placeholder="Responsible"></td>
+  `;
+        document.querySelector('#taskTable tbody').appendChild(tr);
+        enableRowDragging(tr);
+        renumberIds();
+      }
+
+      function getRows() {
+        const rows = [];
+        document.querySelectorAll('#taskTable tbody tr').forEach((tr) => {
+          const c = tr.querySelectorAll('td');
+          rows.push({
+            el: tr,
+            sel: c[0].querySelector('input').checked,
+            id: c[1].querySelector('input').value.trim(),
+            preds: c[2].querySelector('input').value.trim(),
+            activity: c[3].querySelector('input').value.trim(),
+            name: c[4].querySelector('input').value.trim(),
+            dur: c[5].querySelector('input').value.trim(),
+            product: c[6].querySelector('input').value.trim(),
+            ccn: c[7].querySelector('input').value.trim(),
+            manual: c[8].querySelector('input').value.trim(),
+            calcStart: c[9],
+            calcFinish: c[10],
+            responsible: c[11].querySelector('input').value.trim()
+          });
+        });
+        return rows;
+      }
+
+      function removeSelected() {
+        getRows().forEach((r) => {
+          if (r.sel) r.el.remove();
+        });
+        renumberIds();
+      }
+
+      // Ensure a single tooltip exists and is attached to <body>
+      function ensureTooltip() {
+        let tt = document.getElementById('tooltip');
+        if (!tt) {
+          tt = document.createElement('div');
+          tt.id = 'tooltip';
+          tt.className = 'tooltip';
+          tt.style.display = 'none';
+          document.body.appendChild(tt);
+        } else if (tt.parentElement !== document.body) {
+          document.body.appendChild(tt);
+        }
+        return tt;
+      }
+
+      /* ================================== SAMPLE DATA ================================== */
+      function loadSample() {
+        document.querySelector('#taskTable tbody').innerHTML = '';
+        const sample = [
+          {
+            id: 1,
+            preds: '',
+            ac: '2800',
+            name: 'Test Preparation',
+            dur: 4,
+            product: 'IZ00',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'TBN Quick Response (405370)'
+          },
+          {
+            id: 2,
+            preds: '1',
+            ac: '',
+            name: 'Program Implementation',
+            dur: 16,
+            product: 'IZ00',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'TBN Quick Response (405370)'
+          },
+          {
+            id: 3,
+            preds: '2',
+            ac: '2200',
+            name: 'Documentation',
+            dur: 40,
+            product: 'IZ00',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'TBN Quick Response (405370)'
+          },
+          {
+            id: 4,
+            preds: '3',
+            ac: '2810',
+            name: 'Test',
+            dur: 40,
+            product: 'IZ00',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'TBN Quick Response (405370)'
+          },
+          {
+            id: 5,
+            preds: '',
+            ac: '1480',
+            name: 'Software Change Administration',
+            dur: 10,
+            product: 'ADM',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'William Overland'
+          },
+          {
+            id: 6,
+            preds: '',
+            ac: '1610',
+            name: 'Product Administration',
+            dur: 10,
+            product: 'ADM',
+            ccn: 'CCN000',
+            manual: '',
+            responsible: 'Renate Egeland'
+          }
+        ];
+
+        sample.forEach((s) => {
+          addEmptyRow();
+          const c = document.querySelector('#taskTable tbody tr:last-child').querySelectorAll('td');
+          c[1].querySelector('input').value = s.id;
+          c[2].querySelector('input').value = s.preds;
+          c[3].querySelector('input').value = s.ac;
+          c[4].querySelector('input').value = s.name;
+          c[5].querySelector('input').value = s.dur;
+          c[6].querySelector('input').value = s.product;
+          c[7].querySelector('input').value = s.ccn;
+          c[8].querySelector('input').value = s.manual;
+          c[11].querySelector('input').value = s.responsible;
+        });
+        updateFilter();
+        renumberIds();
+      }
+
+      /* ====================== Quick-add: Program Implementation =======================*/
+      function addProgramImplementation() {
+        addEmptyRow();
+        const cells = document
+          .querySelector('#taskTable tbody tr:last-child')
+          .querySelectorAll('td');
+        cells[1].querySelector('input').value = '';
+        cells[2].querySelector('input').value = '';
+        cells[3].querySelector('input').value = '';
+        cells[4].querySelector('input').value = 'Program Implementation';
+        cells[5].querySelector('input').value = '5';
+        cells[6].querySelector('input').value = 'IZ00';
+        cells[7].querySelector('input').value = 'CCN000';
+        cells[8].querySelector('input').value = '';
+        cells[11].querySelector('input').value = 'TBN Quick Response (405370)';
+        renumberIds();
+        updateFilter();
+      }
+
+      // Quick-add: Documentation
+      function addDocumentation() {
+        addEmptyRow();
+        const cells = document
+          .querySelector('#taskTable tbody tr:last-child')
+          .querySelectorAll('td');
+        cells[1].querySelector('input').value = '';
+        cells[2].querySelector('input').value = '';
+        cells[3].querySelector('input').value = '2200';
+        cells[4].querySelector('input').value = 'Documentation';
+        cells[5].querySelector('input').value = '5';
+        cells[6].querySelector('input').value = 'IZ00';
+        cells[7].querySelector('input').value = 'CCN000';
+        cells[8].querySelector('input').value = '';
+        cells[11].querySelector('input').value = 'TBN Quick Response (405370)';
+        renumberIds();
+        updateFilter();
+      }
+
+      /* ================================== PRODUCT FILTER ================================== */
+      function updateFilter() {
+        const rows = getRows();
+        const unique = [...new Set(rows.map((r) => r.product).filter(Boolean))];
+        const sel = document.getElementById('filterProduct');
+        sel.innerHTML =
+          '<option value="">(All)</option>' +
+          unique.map((p) => `<option value="${p}">${p}</option>`).join('');
+      }
+      document.getElementById('filterProduct').addEventListener('change', () => {
+        const f = document.getElementById('filterProduct').value;
+        getRows().forEach((r) => {
+          r.el.style.display = !f || r.product === f ? '' : 'none';
+        });
+      });
+
+      /* ================================== SCHEDULER (FS) ================================== */
+      // supports "start" and "finish" modes
+      function calculate() {
+        const mode = document.getElementById('scheduleMode')?.value || 'start';
+        const project = parseDate(document.getElementById('projectStart').value.trim());
+        const target = parseDate(document.getElementById('targetFinish')?.value.trim());
+        const hpd = parseInt(document.getElementById('hoursPerDay').value, 10) || 8;
+
+        const mask = weekendMask('0000011'); // Sat-Sun weekend
+        const holidays = PREDEFINED_HOLIDAYS.map(parseDate);
+
+        if (mode === 'start' && !project) {
+          return alert('Invalid Project Start date (use dd-mm-yyyy).');
+        }
+        if (mode === 'finish' && !target) {
+          return alert('Invalid Target Finish date (use dd-mm-yyyy).');
+        }
+
+        const rows = getRows();
+        const map = new Map();
+
+        // Build task map (only tasks with IDs take part in dependency graph)
+        for (const r of rows) {
+          if (!r.id) continue;
+          const id = parseInt(r.id, 10);
+          if (isNaN(id)) return alert('Invalid ID: ' + r.id);
+          if (map.has(id)) return alert('Duplicate ID: ' + id);
+
+          map.set(id, {
+            id,
+            activity: r.activity,
+            name: r.name,
+            dur: parseInt(r.dur || '0', 10),
+            preds: r.preds || '',
+            product: r.product,
+            manual: r.manual ? parseDate(r.manual) : null,
+            cStart: null,
+            cFinish: null,
+            _dom: r
+          });
+        }
+
+        // Build graph (FS): pred -> [succ], indegree for topo
+        const indeg = new Map();
+        const graph = new Map();
+        for (const id of map.keys()) indeg.set(id, 0);
+
+        const parseIds = (csv) =>
+          csv
+            ? csv
+                .split(',')
+                .map((x) => x.trim())
+                .filter(Boolean)
+                .map(Number)
+            : [];
+
+        for (const t of map.values()) {
+          const ps = parseIds(t.preds);
+          for (const p of ps) {
+            if (!map.has(p)) return alert(`Unknown predecessor ${p} for task ${t.id}`);
+            if (!graph.has(p)) graph.set(p, []);
+            graph.get(p).push(t.id);
+            indeg.set(t.id, (indeg.get(t.id) || 0) + 1);
+          }
+        }
+
+        // Kahn's algorithm for topological order (preds before succs)
+        const q = [...[...indeg.entries()].filter(([_, d]) => d === 0)].map(([id]) => id);
+        const order = [];
+        while (q.length) {
+          const u = q.shift();
+          order.push(u);
+          for (const v of graph.get(u) || []) {
+            indeg.set(v, indeg.get(v) - 1);
+            if (indeg.get(v) === 0) q.push(v);
+          }
+        }
+        if (order.length !== map.size) return alert('Cycle detected in predecessors.');
+
+        const violations = [];
+
+        if (mode === 'start') {
+          // -------- FORWARD: From Project Start --------
+          for (const id of order) {
+            const t = map.get(id);
+            let start = new Date(project);
+
+            // Start after latest predecessor finish (next workday)
+            const ps = parseIds(t.preds);
+            if (ps.length) {
+              let latest = null;
+              for (const p of ps) {
+                const pt = map.get(p);
+                if (!pt.cFinish) return alert(`Missing predecessor finish for Task ${t.id}.`);
+                if (!latest || pt.cFinish > latest) latest = pt.cFinish;
+              }
+              start = nextWorkday(latest, mask, holidays);
+            }
+
+            // Manual start constraint (push later if needed; adjust to next workday)
+            if (t.manual && t.manual > start) {
+              start = t.manual;
+              if (!isWorkday(start, mask, holidays)) {
+                start = nextWorkday(addDays(start, -1), mask, holidays);
+              }
+            }
+
+            // Convert hours -> business days (ceil). If positive duration < 1 day, force 1 day.
+            let d = ceilDiv(t.dur, hpd);
+            if (t.dur > 0 && d < 1) d = 1;
+
+            const finish = d <= 1 ? new Date(start) : addWorkdays(start, d - 1, mask, holidays);
+
+            t.cStart = start;
+            t.cFinish = finish;
+          }
+        } else {
+          // -------- BACKWARD: From Target Finish --------
+          const targetWorkday = ensureWorkdayOrPrev(new Date(target), mask, holidays);
+
+          // Process in reverse topological order (successors first)
+          for (const id of order.slice().reverse()) {
+            const t = map.get(id);
+            const succs = graph.get(id) || [];
+
+            // --- 1) Compute the baseline finish-limit from target or successors' BASELINE starts ---
+            let baselineFinishLimit = new Date(targetWorkday);
+
+            if (succs.length) {
+              // Use successors' BASELINE start (not their manual-adjusted cStart) to avoid moving predecessors
+              let earliestSuccBaselineStart = null;
+
+              for (const sid of succs) {
+                const st = map.get(sid);
+                if (!st._baselineStart) {
+                  return alert(
+                    `Internal error: successor baseline start not ready for Task ${t.id}.`
+                  );
+                }
+                if (!earliestSuccBaselineStart || st._baselineStart < earliestSuccBaselineStart) {
+                  earliestSuccBaselineStart = st._baselineStart;
+                }
+              }
+
+              // Predecessor must finish the workday BEFORE the successor's BASELINE start
+              baselineFinishLimit = prevWorkday(earliestSuccBaselineStart, mask, holidays);
+            }
+
+            // Convert hours -> business days (ceil; 0h => 0 days allowed)
+            let d = ceilDiv(t.dur, hpd);
+            if (t.dur > 0 && d < 1) d = 1;
+
+            // --- Baseline reverse dates (ignoring manual) ---
+            const baselineFinish = new Date(baselineFinishLimit);
+            const baselineStart =
+              d <= 1
+                ? new Date(baselineFinish)
+                : subtractWorkdays(baselineFinish, d - 1, mask, holidays);
+
+            // Store BASELINE for successors to read
+            t._baselineStart = new Date(baselineStart);
+            t._baselineFinish = new Date(baselineFinish);
+
+            // --- 2) Apply manual start ONLY to this task (does not pull predecessors) ---
+            let start = new Date(baselineStart);
+            let finish = new Date(baselineFinish);
+
+            if (t.manual) {
+              let man = new Date(t.manual);
+
+              // Treat manual date as "Start No Earlier Than":
+              // If manual falls on a non-workday, snap FORWARD to the next workday.
+              if (!isWorkday(man, mask, holidays)) {
+                man = nextWorkday(man, mask, holidays);
+              }
+
+              // Always apply the manual date to THIS task's start (earlier or later),
+              // but do NOT propagate it upstream (predecessors read _baselineStart only).
+              start = man;
+              finish = d <= 1 ? new Date(start) : addWorkdays(start, d - 1, mask, holidays);
+            }
+
+            // --- 3) Record violation if this task now exceeds its baseline (target-driven) finish ---
+            if (finish > baselineFinish) {
+              violations.push(t.id);
+            }
+
+            // Final dates written back
+            t.cStart = start;
+            t.cFinish = finish;
+          }
+        }
+
+        // Write results back to the table
+        for (const r of rows) {
+          const id = r.id ? parseInt(r.id, 10) : null;
+          if (id && map.has(id)) {
+            const t = map.get(id);
+            r.calcStart.textContent = fmtDate(t.cStart);
+            r.calcFinish.textContent = fmtDate(t.cFinish);
+          } else {
+            r.calcStart.textContent = '';
+            r.calcFinish.textContent = '';
+          }
+        }
+
+        updateFilter();
+        const tasksForGantt = [...map.values()];
+        renderGantt(tasksForGantt);
+
+        if (violations.length) {
+          alert(
+            baseMsg + `\nWarning: Target not fully met for task IDs: ${violations.join(', ')}.`
+          );
+        } else {
+          alert(baseMsg);
+        }
+      }
+
+      // ======================= IMPORT CSV WITH KNOWN HEADERS =======================
+      // Incoming headers expected (case-insensitive):
+      // Activity Code | Activity Description | Hours | Product Code | CCN | Start Date | End Date | Activity Responsible
+
+      function parseCsvText_known(text) {
+        const firstLine = text.split(/\r?\n/, 1)[0] || '';
+        const delimiter = firstLine.includes(';') ? ';' : ',';
+
+        const rows = [];
+        let i = 0,
+          field = '',
+          row = [],
+          inQuotes = false;
+
+        const pushField = () => {
+          row.push(field);
+          field = '';
+        };
+        const pushRow = () => {
+          rows.push(row);
+          row = [];
+        };
+
+        while (i < text.length) {
+          const ch = text[i];
+          if (inQuotes) {
+            if (ch === '"') {
+              if (text[i + 1] === '"') {
+                field += '"';
+                i += 2;
+                continue;
+              }
+              inQuotes = false;
+              i++;
+              continue;
+            } else {
+              field += ch;
+              i++;
+              continue;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true;
+              i++;
+              continue;
+            }
+            if (ch === delimiter) {
+              pushField();
+              i++;
+              continue;
+            }
+            if (ch === '\n') {
+              pushField();
+              pushRow();
+              i++;
+              continue;
+            }
+            if (ch === '\r') {
+              pushField();
+              if (text[i + 1] === '\n') i++;
+              pushRow();
+              i++;
+              continue;
+            }
+            field += ch;
+            i++;
+            continue;
+          }
+        }
+        pushField();
+        pushRow();
+
+        // Trim trailing empty rows
+        while (rows.length && rows[rows.length - 1].every((c) => (c ?? '') === '')) rows.pop();
+
+        return { rows, delimiter };
+      }
+
+      function normalizeDate_ddmmyyyy(s) {
+        s = String(s || '').trim();
+        if (!s) return '';
+        if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+
+        // yyyy-mm-dd or yyyy/mm/dd
+        let m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+        if (m) {
+          const yyyy = m[1],
+            mm = m[2].padStart(2, '0'),
+            dd = m[3].padStart(2, '0');
+          return `${dd}-${mm}-${yyyy}`;
+        }
+        // dd.mm.yyyy or dd/mm/yyyy
+        m = s.match(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+        if (m) {
+          const dd = m[1].padStart(2, '0'),
+            mm = m[2].padStart(2, '0'),
+            yyyy = m[3];
+          return `${dd}-${mm}-${yyyy}`;
+        }
+        return s;
+      }
+
+      function loadCsvWithSpecificHeaders(parsed) {
+        const rows = parsed.rows;
+        if (!rows.length) {
+          alert('CSV appears to be empty.');
+          return;
+        }
+
+        // normalize to lowercase
+        const header = rows[0].map((h) =>
+          String(h || '')
+            .trim()
+            .toLowerCase()
+        );
+
+        // fixed index map (all lowercase)
+        const idx = {
+          activity: header.indexOf('activity code'),
+          name: header.indexOf('activity description'),
+          dur: header.indexOf('hours'),
+          product: header.indexOf('product code'),
+          ccn: header.indexOf('ccn'),
+          calcStart: header.indexOf('start date'),
+          calcFinish: header.indexOf('end date'),
+          responsible: header.indexOf('activity responsible')
+        };
+
+        // Basic validation: require Activity Description and Start/End
+        const essential = ['name', 'calcStart', 'calcFinish'];
+        const missing = essential.filter((k) => idx[k] === -1);
+        if (missing.length) {
+          alert('CSV is missing essential headers: ' + missing.join(', '));
+          return;
+        }
+
+        const tbody = document.querySelector('#taskTable tbody');
+        tbody.innerHTML = '';
+
+        const valFor = (line, key) => {
+          const i = idx[key];
+          return i >= 0 && i < line.length ? String(line[i] ?? '').trim() : '';
+        };
+
+        for (let r = 1; r < rows.length; r++) {
+          const line = rows[r];
+          if (!line || line.every((c) => String(c ?? '').trim() === '')) continue;
+
+          const t = {
+            activity: valFor(line, 'activity'),
+            name: valFor(line, 'name'),
+            dur: valFor(line, 'dur'),
+            product: valFor(line, 'product'),
+            ccn: valFor(line, 'ccn'),
+            calcStart: normalizeDate_ddmmyyyy(valFor(line, 'calcStart')),
+            calcFinish: normalizeDate_ddmmyyyy(valFor(line, 'calcFinish')),
+            responsible: valFor(line, 'responsible')
+          };
+
+          addEmptyRow();
+          const c = document.querySelector('#taskTable tbody tr:last-child').querySelectorAll('td');
+          c[1].querySelector('input').value = ''; // ID
+          c[2].querySelector('input').value = ''; // Predecessor
+          c[3].querySelector('input').value = t.activity; // Activity Code
+          c[4].querySelector('input').value = t.name; // Task Name
+          c[5].querySelector('input').value = t.dur; // Duration (h)
+          c[6].querySelector('input').value = t.product; // Product Code
+          c[7].querySelector('input').value = t.ccn; // CCN
+          c[8].querySelector('input').value = ''; // Manual Start
+          c[9].textContent = t.calcStart; // Calculated Start (from CSV)
+          c[10].textContent = t.calcFinish; // Calculated Finish (from CSV)
+          c[11].querySelector('input').value = t.responsible; // Responsible
+          renumberIds();
+        }
+
+        updateFilter();
+        alert(
+          'CSV imported with mapped headers. You can now Calculate to recompute dates if needed.'
+        );
+      }
+
+      // Wire up the Import button (single set of listeners)
+      document.getElementById('importCsv')?.addEventListener('click', () => {
+        document.getElementById('csvFileInput').click();
+      });
+      document.getElementById('csvFileInput')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = parseCsvText_known(ev.target.result || '');
+            loadCsvWithSpecificHeaders(parsed);
+          } catch (err) {
+            console.error(err);
+            alert('Failed to parse CSV. Please verify the file format.');
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+        e.target.value = ''; // allow re-import of same file
+      });
+
+      /* ================================== COPY HTML ================================== */
+      async function copyPlanAsHtml() {
+        const rows = getRows().filter((r) => r.el.style.display !== 'none'); // respect filter
+        if (!rows.length) {
+          alert('No tasks to copy.');
+          return;
+        }
+
+        const projectName = (document.getElementById('projectName')?.value || '').trim();
+        const titleHtml = projectName
+          ? `<div style="font:600 16px system-ui,Segoe UI,Arial; margin-bottom:6px;">Project: ${escapeHtml(projectName)}</div>`
+          : '';
+
+        const cols = [
+          { h: 'Activity Code', get: (r) => r.activity },
+          { h: 'Activity Description', get: (r) => r.name },
+          { h: 'Duration (h)', get: (r) => r.dur },
+          { h: 'Product', get: (r) => r.product },
+          { h: 'CCN', get: (r) => r.ccn },
+          { h: 'Start', get: (r) => r.calcStart.textContent },
+          { h: 'Finish', get: (r) => r.calcFinish.textContent },
+          { h: 'Responsible', get: (r) => r.responsible }
+        ];
+
+        const tableStart = `
+    <table cellspacing="0" cellpadding="6" style="border-collapse:collapse; font:14px system-ui,Segoe UI,Arial; border:1px solid #d1d5db;">
+      <thead>
+        <tr style="background:#eef2f7; color:#374151;">
+          ${cols.map((c) => `<th style="border:1px solid #d1d5db; text-align:left;">${escapeHtml(c.h)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+        const tableRows = rows
+          .map((r, idx) => {
+            const bg = idx % 2 ? '#f9fafb' : '#ffffff';
+            return `<tr style="background:${bg}; color:#111827;">
+      ${cols.map((c) => `<td style="border:1px solid #e5e7eb; white-space:nowrap;">${escapeHtml(String(c.get(r) ?? ''))}</td>`).join('')}
+    </tr>`;
+          })
+          .join('');
+        const tableEnd = `</tbody></table>`;
+
+        const html = titleHtml + tableStart + tableRows + tableEnd;
+
+        try {
+          const item = new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([stripHtml(html)], { type: 'text/plain' })
+          });
+          await navigator.clipboard.write([item]);
+          alert('Plan copied as HTML. Paste into your email (Ctrl+V).');
+        } catch (err) {
+          const div = document.createElement('div');
+          div.contentEditable = 'true';
+          div.style.position = 'fixed';
+          div.style.opacity = '0';
+          div.innerHTML = html;
+          document.body.appendChild(div);
+
+          const range = document.createRange();
+          range.selectNodeContents(div);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+
+          try {
+            document.execCommand('copy');
+            alert('Plan copied as HTML. Paste into your email.');
+          } catch {
+            alert('Copy failed. Please try Copy as Text.');
+          } finally {
+            sel.removeAllRanges();
+            document.body.removeChild(div);
+          }
+        }
+      }
+
+      // Small helpers
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (m) =>
+            ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;'
+            })[m]
+        );
+      }
+      function stripHtml(s) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = s;
+        return tmp.textContent || tmp.innerText || '';
+      }
+
+      /* ================================== CLEAR ALL ================================== */
+      function clearAll() {
+        document.querySelector('#taskTable tbody').innerHTML = '';
+        document.getElementById('filterProduct').innerHTML = '<option value="">(All)</option>';
+        addEmptyRow();
+        renderGantt([]);
+        renumberIds();
+      }
+
+      /* ================================== CSV EXPORT (dd-mm-yyyy) ================================== */
+      function exportCsv() {
+        const rows = getRows();
+        const headers = [
+          'Activity Code',
+          'Activity Description',
+          'Hours',
+          'Product Code',
+          'CCN',
+          'Start Date',
+          'End Date',
+          'Activity Responsible'
+        ];
+        const data = rows.map((r) => [
+          r.activity,
+          r.name,
+          r.dur,
+          r.product,
+          r.ccn,
+          r.calcStart.textContent,
+          r.calcFinish.textContent,
+          r.responsible
+        ]);
+        const esc = (s) => (/[",\n;]/.test(s) ? `"${String(s).replace(/"/g, '""')}"` : s);
+        const csv =
+          headers.map(esc).join(';') +
+          '\n' +
+          data.map((row) => row.map((x) => esc(String(x ?? ''))).join(';')).join('\n');
+
+        // Get project name from input field
+        let projectName = document.getElementById('projectName').value.trim();
+        if (!projectName) {
+          projectName = 'Project Planning'; // fallback
+        }
+        projectName = projectName.replace(/[^a-z0-9_\-]/gi, '_');
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = projectName + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      /* ================================== GANTT CHART ================================== */
+      function renderGantt(tasks) {
+        const chart = document.getElementById('ganttChart');
+        const tooltip = ensureTooltip();
+
+        chart.innerHTML = '';
+        if (!tasks.length) return;
+
+        const min = new Date(Math.min(...tasks.map((t) => t.cStart)));
+        const max = new Date(Math.max(...tasks.map((t) => t.cFinish)));
+
+        const pxPerDay = 24;
+
+        const holidays = PREDEFINED_HOLIDAYS.map(parseDate);
+
+        // Color palettes for product codes
+
+        const palette = [
+          '#0078D4', // Azure/Fluent brand blue (ADO)
+          '#8A8886', // Neutral mid (labels/secondary in ADO)
+          '#038387', // Teal (Fluent accent)
+          '#C19C00', // Brass/Gold accent
+          '#881798', // Purple accent
+          '#D13438', // Fluent red
+          '#498205', // Green accent
+          '#605E5C', // Neutral darker
+          '#FFB900' // Yellow accent
+        ];
+
+        const colorByProduct = {};
+        let ci = 0;
+
+        tasks.forEach((t) => {
+          if (!colorByProduct[t.product]) {
+            colorByProduct[t.product] = palette[ci++ % palette.length];
+          }
+        });
+
+        /* ---- Weekend & holiday shading ---- */
+        const days = Math.floor((max - min) / (1000 * 3600 * 24)) + 1;
+
+        for (let i = 0; i < days; i++) {
+          const date = new Date(min);
+          date.setDate(min.getDate() + i);
+
+          const left = i * pxPerDay;
+
+          const isHolidayDay = holidays.some((h) => sameYMD(h, date));
+          const isWeekendDay = isWeekend(date, weekendMask('0000011'));
+
+          if (isWeekendDay || isHolidayDay) {
+            const shade = document.createElement('div');
+            shade.style.pointerEvents = 'none';
+            shade.style.position = 'absolute';
+            shade.style.left = left + 'px';
+            shade.style.width = pxPerDay + 'px';
+            shade.style.top = '0';
+            shade.style.bottom = '0';
+            shade.style.zIndex = 0;
+            shade.style.background = isHolidayDay
+              ? 'rgba(179, 43, 43, 0.25)'
+              : 'rgba(65, 65, 65, 0.35)';
+            chart.appendChild(shade);
+          }
+        }
+
+        /* ---- Bars only (no labels) ---- */
+        tasks.forEach((t) => {
+          const row = document.createElement('div');
+          row.className = 'gantt-row';
+
+          const offset = Math.floor((t.cStart - min) / (1000 * 3600 * 24));
+          const dur = Math.floor((t.cFinish - t.cStart) / (1000 * 3600 * 24)) + 1;
+
+          const bar = document.createElement('div');
+          bar.className = 'gantt-bar';
+          bar.style.left = offset * pxPerDay + 'px';
+          bar.style.width = dur * pxPerDay + 'px';
+          bar.style.background = colorByProduct[t.product] || '#555';
+          bar.textContent = `${t.product} ${t.name}`;
+          bar.style.zIndex = 2;
+
+          /* Tooltip */
+          bar.addEventListener('mousemove', (e) => {
+            const padding = 12;
+            const x = e.clientX + 15;
+            const y = e.clientY + 10;
+
+            tooltip.style.display = 'block';
+            tooltip.textContent = `${t.product} – ${t.name} | ${fmtDate(t.cStart)} → ${fmtDate(t.cFinish)}`;
+
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const tw = tooltip.offsetWidth;
+            const th = tooltip.offsetHeight;
+
+            tooltip.style.left = Math.min(x, vw - tw - padding) + 'px';
+            tooltip.style.top = Math.min(y, vh - th - padding) + 'px';
+          });
+
+          bar.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+          });
+
+          row.appendChild(bar);
+          chart.appendChild(row);
+        });
+
+        chart.style.width = days * pxPerDay + 40 + 'px';
+
+        // Save state for copy/export
+        _lastGanttState = { tasks, min, max, pxPerDay, colorByProduct };
+      }
+
+      // -------------------------------- COPY GANTT PNG -----------------------------------------//
+      async function copyGanttAsPng() {
+        const { tasks, min, max, pxPerDay, colorByProduct } = _lastGanttState || {};
+        if (!tasks || !tasks.length || !min || !max) {
+          alert('No Gantt data to copy. Please Calculate first.');
+          return;
+        }
+
+        // Layout parameters (match your render)
+        const rowHeight = 26;
+        const barHeight = 20;
+        const rowGap = 6;
+        const topPadding = 16;
+        const leftPadding = 12;
+        const rightPadding = 12;
+        const bottomPadding = 16;
+
+        const days = Math.floor((max - min) / (1000 * 3600 * 24)) + 1;
+        const width = leftPadding + days * pxPerDay + rightPadding;
+        const height = topPadding + tasks.length * (rowHeight + rowGap) + bottomPadding;
+
+        const holidays = PREDEFINED_HOLIDAYS.map(parseDate);
+        const isWkd = (d) => isWeekend(d, weekendMask('0000011'));
+        const isHol = (d) => holidays.some((h) => sameYMD(h, d));
+
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Azure DevOps–style Background & Grid Colors
+        const dark = document.body.classList.contains('dark');
+
+        // ADO neutral dark canvas (~ rgb(32,31,30) / #201F1E)
+        const bg = dark ? '#201F1E' : '#FFFFFF';
+
+        // Weekend shading: subtle neutral (ADO uses very low‑contrast neutrals)
+        const gridWeekend = dark
+          ? 'rgba(255,255,255,0.06)' // subtle, non-intrusive
+          : 'rgba(200,200,200,0.35)';
+
+        // Holiday shading: keep the yellow tint but tone it darker for ADO dark mode
+        const gridHoliday = dark
+          ? 'rgba(179, 43, 43, 0.25)' // softer than your previous 0.35
+          : 'rgba(255,230,128,0.45)';
+
+        // Text color in ADO dark = white at ~95% opacity
+        const textColor = dark ? 'rgba(255,255,255,0.95)' : '#242424';
+
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, width, height);
+
+        // Day shading (weekend/holiday)
+        for (let i = 0; i < days; i++) {
+          const date = new Date(min);
+          date.setDate(min.getDate() + i);
+          const x = leftPadding + i * pxPerDay;
+
+          const wk = isWkd(date);
+          const hol = isHol(date);
+
+          if (wk || hol) {
+            ctx.fillStyle = hol ? gridHoliday : gridWeekend;
+            ctx.fillRect(x, 0, pxPerDay, height);
+          }
+        }
+
+        // Draw bars
+        ctx.textBaseline = 'middle';
+        ctx.font = '600 11px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+
+        tasks.forEach((t, idx) => {
+          const offsetDays = Math.floor((t.cStart - min) / (1000 * 3600 * 24));
+          const durDays = Math.floor((t.cFinish - t.cStart) / (1000 * 3600 * 24)) + 1;
+
+          const x = leftPadding + offsetDays * pxPerDay;
+          const y = topPadding + idx * (rowHeight + rowGap);
+          const w = Math.max(1, durDays * pxPerDay);
+          const h = barHeight;
+
+          // Bar
+          ctx.fillStyle = colorByProduct[t.product] || '#555';
+          ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+          const radius = 6;
+
+          // Rounded rect
+          ctx.beginPath();
+          ctx.moveTo(x + radius, y);
+          ctx.lineTo(x + w - radius, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+          ctx.lineTo(x + w, y + h - radius);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+          ctx.lineTo(x + radius, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+          ctx.lineTo(x, y + radius);
+          ctx.quadraticCurveTo(x, y, x + radius, y);
+          ctx.closePath();
+          ctx.fill();
+
+          // Label — show Product Code (you changed in DOM too)
+          const label = (t.product + t.name || '').toString();
+          ctx.fillStyle = '#ffffff';
+          const tx = x + 4;
+          const ty = y + h / 2;
+          // Clip text to bar
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, y, w, h);
+          ctx.clip();
+          ctx.fillText(label, tx, ty);
+          ctx.restore();
+        });
+
+        try {
+          // Prefer writing an actual image to clipboard
+          const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+          if (!blob) throw new Error('Canvas toBlob failed.');
+
+          const item = new ClipboardItem({
+            'image/png': blob,
+            'text/html': new Blob([`<img alt="Gantt" src="${canvas.toDataURL('image/png')}" />`], {
+              type: 'text/html'
+            })
+          });
+
+          await navigator.clipboard.write([item]);
+          alert('Gantt copied as image. Paste into your email (Ctrl+V).');
+        } catch (err) {
+          // Fallback using a hidden contentEditable div to copy HTML <img>
+          try {
+            const imgHtml = `<img alt="Gantt" src="${canvas.toDataURL('image/png')}" />`;
+            const div = document.createElement('div');
+            div.contentEditable = 'true';
+            div.style.position = 'fixed';
+            div.style.opacity = '0';
+            div.innerHTML = imgHtml;
+            document.body.appendChild(div);
+
+            const range = document.createRange();
+            range.selectNodeContents(div);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            document.execCommand('copy');
+            sel.removeAllRanges();
+            document.body.removeChild(div);
+
+            alert('Gantt copied as image (fallback). Paste into your email.');
+          } catch (fallbackErr) {
+            console.error(fallbackErr);
+            // Final fallback: download PNG
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = 'gantt.png';
+            a.click();
+            alert('Clipboard not available. Downloaded gantt.png instead.');
+          }
+        }
+      }
+
+      /* ========================================================================== */
+      /*                                     INIT                                   */
+      /* ========================================================================== */
+      document.getElementById('projectStart').value = fmtDate(new Date()); // today's date dd-mm-yyyy
+      document.getElementById('addRow').addEventListener('click', addEmptyRow);
+      document.getElementById('removeSelected').addEventListener('click', removeSelected);
+      document.getElementById('loadSample').addEventListener('click', loadSample);
+      document.getElementById('calculate').addEventListener('click', calculate);
+      document.getElementById('exportCsv').addEventListener('click', exportCsv);
+      document.getElementById('clearAll').addEventListener('click', clearAll);
+      document.getElementById('addProgram').addEventListener('click', addProgramImplementation);
+      document.getElementById('addDocumentation').addEventListener('click', addDocumentation);
+      document.getElementById('copyHtml').addEventListener('click', copyPlanAsHtml);
+      document.getElementById('copyGantt').addEventListener('click', copyGanttAsPng);
+      document.getElementById('toggleTheme').addEventListener('click', () => {
+        const btn = document.getElementById('toggleTheme');
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+
+        localStorage.setItem('scheduler-theme', isDark ? 'dark' : 'light');
+        btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+      });
+
+      // One starter row
+      addEmptyRow();
+      renumberIds();
+
+      // DARK MODE TOGGLE + SAVE PREFERENCE
+      (function initTheme() {
+        const saved = localStorage.getItem('scheduler-theme');
+        const btn = document.getElementById('toggleTheme');
+
+        if (saved === 'dark') {
+          document.body.classList.add('dark');
+          btn.textContent = '☀️ Light Mode';
+        } else {
+          btn.textContent = '🌙 Dark Mode';
+        }
+      })();
+
+      /* ============================================================
+   DRAG & DROP CSV IMPORT
+============================================================ */
+
+      const dropZone = document.getElementById('csvDropZone');
+      const fileInput = document.getElementById('csvFileInput');
+
+      // Click-to-upload
+      dropZone.addEventListener('click', () => fileInput.click());
+
+      // Add visual highlight on dragover
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+
+      // Remove highlight when leaving
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+      });
+
+      // Handle file drop
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+
+        const file = e.dataTransfer.files?.[0];
+        if (!file) return;
+
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+          alert('Please drop a .csv file.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = parseCsvText_known(ev.target.result || '');
+            loadCsvWithSpecificHeaders(parsed);
+          } catch (err) {
+            console.error(err);
+            alert('Failed to parse CSV.');
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+      });
+
+      // Standard file input fallback
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = parseCsvText_known(ev.target.result || '');
+            loadCsvWithSpecificHeaders(parsed);
+          } catch (err) {
+            console.error(err);
+            alert('Failed to parse CSV.');
+          }
+        };
+        reader.readAsText(file, 'utf-8');
+        e.target.value = '';
+      });
+    </script>
+  </body>
+</html>
